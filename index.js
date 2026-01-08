@@ -16,10 +16,7 @@ admin.initializeApp({
 // Middlewares
 app.use(express.json());
 app.use(
-  cors({
-    origin: [process.env.CLIENT_DOMAIN],
-    credentials: true,
-  })
+  cors()
 );
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -36,9 +33,63 @@ async function run() {
   try {
     // await client.connect();
 
+    const db = client.db("ecoTrack");
+    const userCollection = db.collection("users");
+    const challengesCollection = db.collection("challenges");
+     
+  //  User Related API 
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      user.roll = "user";
+      user.createAt = new Date();
+
+      const query = { email: user.email };
+      const userDuplicate = await userCollection.findOne(query);
+
+      if (userDuplicate) {
+        return res.send({ message: "user already exist" });
+      }
+
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // Challenges Related API
+    app.post("/challenges",async (req,res)=>{
+      const challenge = req.body
+      challenge.participants = 0;
+      challenge.createAt = new Date();
+      const query = {title : challenge.title}
+      const challengeDuplicateFind = await challengesCollection.findOne(query)
+
+      if(challengeDuplicateFind){
+        return res.send({message:"Challenge is already Saved"})
+      }
+
+      const result = await challengesCollection.insertOne(challenge)
+      res.send({message:"Challenge Saved"})
+    })
 
 
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log(
