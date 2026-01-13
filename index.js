@@ -34,6 +34,7 @@ async function run() {
     const db = client.db("ecoTrack");
     const userCollection = db.collection("users");
     const challengesCollection = db.collection("challenges");
+    const userChallengesCollection = db.collection("userChallenges");
 
     //  User Related API
     app.post("/users", async (req, res) => {
@@ -50,6 +51,15 @@ async function run() {
 
       const result = await userCollection.insertOne(user);
       res.send(result);
+    });
+
+    app.get("/user", async (req, res) => {
+      const{ email} = req.query;
+      const query = {
+        email: email,
+      };
+      const result = await userCollection.findOne(query);
+      res.send(result)
     });
 
     // Challenges Related API
@@ -69,30 +79,117 @@ async function run() {
       res.send({ message: "Challenge Saved" });
     });
 
-    app.get("/challengeData",async (req,res)=>{
-      const result = await challengesCollection.find().toArray()
-      res.send(result)
-    })
+    app.get("/challengeData", async (req, res) => {
+      const result = await challengesCollection.find().toArray();
+      res.send(result);
+    });
 
-    app.get("/challengeData/:id",async (req,res)=>{
-      const id =req.params.id
-      const query = {_id:new ObjectId(id)}
-      const result = await challengesCollection.findOne(query)
-      res.send(result)
-    })
+    app.get("/challengeData/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await challengesCollection.findOne(query);
+      res.send(result);
+    });
 
-
-    app.patch("/challenges/image",async (req,res)=>{
-      const challenge = req.body
+    app.patch("/challenges/image", async (req, res) => {
+      const challenge = req.body;
       const query = { category: challenge.category };
-      const updateData={
-        $set:{
-          image : challenge.image
-        }
+      const updateData = {
+        $set: {
+          image: challenge.image,
+        },
       };
-      const result = await challengesCollection.updateOne(query,updateData)
-      res.send(result)
-})
+      const result = await challengesCollection.updateOne(query, updateData);
+      res.send(result);
+    });
+    app.patch("/challenges/category", async (req, res) => {
+      const { category } = req.query;
+      const query = { category };
+      const findData = await challengesCollection.findOne(query);
+
+      const updateData = {
+        $set: {
+          participants: findData.participants + 1,
+        },
+      };
+      const result = await challengesCollection.updateOne(query, updateData);
+      res.send(result);
+    });
+
+    //  userChallengesCollection Related API
+
+    app.post("/userChallenges", async (req, res) => {
+      const userChallengesInfo = req.body;
+      userChallengesInfo.joinDate = new Date();
+
+      const query = {
+        category: userChallengesInfo.category,
+        userEmail: userChallengesInfo.email,
+      };
+      const userChallengeDuplicateFind = await userChallengesCollection.findOne(
+        query
+      );
+
+      if (userChallengeDuplicateFind) {
+        return res.send({ message: "User already this Challenge taken" });
+      }
+
+      const result = await userChallengesCollection.insertOne(
+        userChallengesInfo
+      );
+      res.send(result);
+    });
+
+    app.get("/userChallengeDuplicateFind", async (req, res) => {
+      const { category, email } = req.query;
+
+      console.log(category, email);
+      const result = await userChallengesCollection.findOne({
+        category: category,
+        userEmail: email,
+      });
+
+      res.send(result);
+    });
+
+    app.get("/userChallenges/find", async (req, res) => {
+      const { email } = req.query;
+      const query = {
+        userEmail: { $regex: email, $options: "i" },
+      };
+      const result = await userChallengesCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.patch("/userChallenges/statusUpdated", async (req, res) => {
+      const statusUpdated = req.body;
+      console.log(statusUpdated.challengeId);
+      const query = {
+        challengeId: statusUpdated.challengeId,
+        userEmail: statusUpdated.userEmail,
+      };
+
+      const updateStatus = {
+        $set: { status: statusUpdated.status },
+      };
+
+      const result = await userChallengesCollection.updateOne(
+        query,
+        updateStatus
+      );
+      res.send(result);
+    });
+
+    app.post("/userChallenges/delete", async (req, res) => {
+      const deleteData = req.body;
+      console.log(deleteData.challengeId);
+      const query = {
+        challengeId: deleteData.challengeId,
+        userEmail: deleteData.userEmail,
+      };
+      const result = await userChallengesCollection.deleteOne(query);
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
