@@ -35,6 +35,8 @@ async function run() {
     const userCollection = db.collection("users");
     const challengesCollection = db.collection("challenges");
     const userChallengesCollection = db.collection("userChallenges");
+    const tipsCollection = db.collection("tips");
+    const upcomingEventCollection = db.collection("upcomingEvent");
 
     //  User Related API
     app.post("/users", async (req, res) => {
@@ -59,6 +61,11 @@ async function run() {
         email: email,
       };
       const result = await userCollection.findOne(query);
+      res.send(result)
+    });
+
+    app.get("/user/all", async (req, res) => {
+     const result = await userCollection.find().toArray()
       res.send(result)
     });
 
@@ -190,6 +197,36 @@ async function run() {
       const result = await userChallengesCollection.deleteOne(query);
       res.send(result);
     });
+
+    // Tips Related Api
+    app.post("/tips",async (req,res)=>{
+      const tipsData = req.body
+      const result =await tipsCollection.insertOne(tipsData )
+      res.send(result)
+    })
+
+    app.get("/tips/all",async (req,res)=>{
+      const result = await tipsCollection.find().toArray()
+      res.send(result)
+    })
+    // Event Related Api
+    app.post("/events",async (req,res)=>{
+      const tipsData = req.body
+      const result =await upcomingEventCollection.insertOne(tipsData )
+      res.send(result)
+    })
+
+    app.get("/events/all",async (req,res)=>{
+      const result = await upcomingEventCollection.find().toArray()
+      res.send(result)
+    })
+
+
+
+
+
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log(
