@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const admin = require("firebase-admin");
+
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 3000;
@@ -16,6 +17,25 @@ admin.initializeApp({
 // Middlewares
 app.use(express.json());
 app.use(cors());
+
+const verifyFBToken = async (req, res, next) => {
+  // console.log(req.headers.authorization);
+  const token = req.headers.authorization;
+
+  if (!token) {
+    res.status(401).send({ message: "You are not Authorization" });
+  }
+
+  try {
+    const idToken = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    // console.log(decoded);
+    res.decoded_email = decoded.email;
+    next();
+  } catch (error) {
+    res.status(401).send({ message: "unauthorized access" });
+  }
+};
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const uri = `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASS}@cluster1.19ohfxv.mongodb.net/?appName=Cluster1`;
@@ -38,6 +58,17 @@ async function run() {
     const tipsCollection = db.collection("tips");
     const upcomingEventCollection = db.collection("upcomingEvent");
 
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded_email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+      if (!user || user.roll !== "admin") {
+        res.status(403).send({ message: "forbidden access" });
+      }
+
+      next();
+    };
+
     //  User Related API
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -56,21 +87,21 @@ async function run() {
     });
 
     app.get("/user", async (req, res) => {
-      const{ email} = req.query;
+      const { email } = req.query;
       const query = {
         email: email,
       };
       const result = await userCollection.findOne(query);
-      res.send(result)
+      res.send(result);
     });
 
     app.get("/user/all", async (req, res) => {
-     const result = await userCollection.find().toArray()
-      res.send(result)
+      const result = await userCollection.find().toArray();
+      res.send(result);
     });
 
     // Challenges Related API
-    app.post("/challenges", async (req, res) => {
+    app.post("/challenges",verifyFBToken,verifyAdmin, async (req, res) => {
       const challenge = req.body;
 
       challenge.participants = 0;
@@ -91,7 +122,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/challengeData/:id", async (req, res) => {
+    app.get("/challengeData/:id",verifyFBToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await challengesCollection.findOne(query);
@@ -125,7 +156,7 @@ async function run() {
 
     //  userChallengesCollection Related API
 
-    app.post("/userChallenges", async (req, res) => {
+    app.post("/userChallenges",verifyFBToken, async (req, res) => {
       const userChallengesInfo = req.body;
       userChallengesInfo.joinDate = new Date();
 
@@ -159,8 +190,12 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/userChallenges/find", async (req, res) => {
+    app.get("/userChallenges/find", verifyFBToken, async (req, res) => {
       const { email } = req.query;
+
+      if (email !== res.decoded_email) {
+        res.status(403).send({ message: "forbidden access" });
+      }
       const query = {
         userEmail: { $regex: email, $options: "i" },
       };
@@ -168,7 +203,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/userChallenges/statusUpdated", async (req, res) => {
+    app.patch("/userChallenges/statusUpdated",verifyFBToken, async (req, res) => {
       const statusUpdated = req.body;
       console.log(statusUpdated.challengeId);
       const query = {
@@ -187,7 +222,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/userChallenges/delete", async (req, res) => {
+    app.post("/userChallenges/delete",verifyFBToken, async (req, res) => {
       const deleteData = req.body;
       console.log(deleteData.challengeId);
       const query = {
@@ -199,34 +234,29 @@ async function run() {
     });
 
     // Tips Related Api
-    app.post("/tips",async (req,res)=>{
-      const tipsData = req.body
-      const result =await tipsCollection.insertOne(tipsData )
-      res.send(result)
-    })
+    app.post("/tips",verifyFBToken, async (req, res) => {
+      const tipsData = req.body;
+      const result = await tipsCollection.insertOne(tipsData);
+      res.send(result);
+    });
 
-    app.get("/tips/all",async (req,res)=>{
-      const result = await tipsCollection.find().toArray()
-      res.send(result)
-    })
+    app.get("/tips/all", async (req, res) => {
+      const result = await tipsCollection.find().toArray();
+      res.send(result);
+    });
     // Event Related Api
-    app.post("/events",async (req,res)=>{
-      const tipsData = req.body
-      const result =await upcomingEventCollection.insertOne(tipsData )
-      res.send(result)
-    })
+    app.post("/events", verifyFBToken,verifyAdmin, async (req, res) => {
+      const tipsData = req.body;
+      const result = await upcomingEventCollection.insertOne(tipsData);
+      //  console.log(req.headers);
+      res.send(result);
+    });
 
-    app.get("/events/all",async (req,res)=>{
-      const result = await upcomingEventCollection.find().toArray()
-      res.send(result)
-    })
-
-
-
-
-
-
-
+    app.get("/events/all", async (req, res) => {
+      const result = await upcomingEventCollection.find().toArray();
+      // console.log(req.headers);
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
