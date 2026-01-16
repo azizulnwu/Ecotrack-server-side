@@ -275,11 +275,6 @@ app.get("/", (req, res) => {
   res.send("Hello from Server..");
 });
 
-// app.listen(port, () => {
-//   console.log(`Example app listening on port ${port}`);
-// });
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`);
+});
