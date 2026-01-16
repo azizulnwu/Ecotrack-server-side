@@ -18,7 +18,11 @@ admin.initializeApp({
 
 // Middlewares
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: [process.env.CLIENT_DOMAIN],
+    credentials: true,
+    optionSuccessStatus: 200,
+  }));
 
 const verifyFBToken = async (req, res, next) => {
   // console.log(req.headers.authorization);
