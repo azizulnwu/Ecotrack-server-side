@@ -8,7 +8,9 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 3000;
 
-const serviceAccount = require("./firebase-adminsdk-key.json");
+// index.js
+const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -23,7 +25,7 @@ const verifyFBToken = async (req, res, next) => {
   const token = req.headers.authorization;
 
   if (!token) {
-    res.status(401).send({ message: "You are not Authorization" });
+    return res.status(401).send({ message: "You are not Authorization" });
   }
 
   try {
@@ -47,9 +49,11 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+
 async function run() {
   try {
-    // await client.connect();
+   
 
     const db = client.db("ecoTrack");
     const userCollection = db.collection("users");
@@ -63,7 +67,7 @@ async function run() {
       const query = { email };
       const user = await userCollection.findOne(query);
       if (!user || user.roll !== "admin") {
-        res.status(403).send({ message: "forbidden access" });
+        return res.status(403).send({ message: "forbidden access" });
       }
 
       next();
@@ -258,7 +262,7 @@ async function run() {
       res.send(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
@@ -271,6 +275,11 @@ app.get("/", (req, res) => {
   res.send("Hello from Server..");
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`Example app listening on port ${port}`);
+// });
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
