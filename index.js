@@ -9,20 +9,25 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
 // index.js
-const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY.replace(/\\n/g, '\n'), "base64").toString("utf8");
-const serviceAccount = JSON.parse(decoded).
+const decoded = Buffer.from(
+  process.env.FIREBASE_SERVICE_KEY,
+  "base64"
+).toString("utf8");
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
-J
+
 // Middlewares
 app.use(express.json());
-app.use(cors({
+app.use(
+  cors({
     origin: [process.env.CLIENT_DOMAIN],
     credentials: true,
     optionSuccessStatus: 200,
-  }));
+  })
+);
 
 const verifyFBToken = async (req, res, next) => {
   // console.log(req.headers.authorization);
@@ -54,11 +59,8 @@ const client = new MongoClient(uri, {
   },
 });
 
-
 async function run() {
   try {
-   
-
     const db = client.db("ecoTrack");
     const userCollection = db.collection("users");
     const challengesCollection = db.collection("challenges");
@@ -109,7 +111,7 @@ async function run() {
     });
 
     // Challenges Related API
-    app.post("/challenges",verifyFBToken,verifyAdmin, async (req, res) => {
+    app.post("/challenges", verifyFBToken, verifyAdmin, async (req, res) => {
       const challenge = req.body;
 
       challenge.participants = 0;
@@ -130,7 +132,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/challengeData/:id",verifyFBToken, async (req, res) => {
+    app.get("/challengeData/:id", verifyFBToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await challengesCollection.findOne(query);
@@ -164,7 +166,7 @@ async function run() {
 
     //  userChallengesCollection Related API
 
-    app.post("/userChallenges",verifyFBToken, async (req, res) => {
+    app.post("/userChallenges", verifyFBToken, async (req, res) => {
       const userChallengesInfo = req.body;
       userChallengesInfo.joinDate = new Date();
 
@@ -211,26 +213,30 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/userChallenges/statusUpdated",verifyFBToken, async (req, res) => {
-      const statusUpdated = req.body;
-      console.log(statusUpdated.challengeId);
-      const query = {
-        challengeId: statusUpdated.challengeId,
-        userEmail: statusUpdated.userEmail,
-      };
+    app.patch(
+      "/userChallenges/statusUpdated",
+      verifyFBToken,
+      async (req, res) => {
+        const statusUpdated = req.body;
+        console.log(statusUpdated.challengeId);
+        const query = {
+          challengeId: statusUpdated.challengeId,
+          userEmail: statusUpdated.userEmail,
+        };
 
-      const updateStatus = {
-        $set: { status: statusUpdated.status },
-      };
+        const updateStatus = {
+          $set: { status: statusUpdated.status },
+        };
 
-      const result = await userChallengesCollection.updateOne(
-        query,
-        updateStatus
-      );
-      res.send(result);
-    });
+        const result = await userChallengesCollection.updateOne(
+          query,
+          updateStatus
+        );
+        res.send(result);
+      }
+    );
 
-    app.post("/userChallenges/delete",verifyFBToken, async (req, res) => {
+    app.post("/userChallenges/delete", verifyFBToken, async (req, res) => {
       const deleteData = req.body;
       console.log(deleteData.challengeId);
       const query = {
@@ -242,7 +248,7 @@ async function run() {
     });
 
     // Tips Related Api
-    app.post("/tips",verifyFBToken, async (req, res) => {
+    app.post("/tips", verifyFBToken, async (req, res) => {
       const tipsData = req.body;
       const result = await tipsCollection.insertOne(tipsData);
       res.send(result);
@@ -253,7 +259,7 @@ async function run() {
       res.send(result);
     });
     // Event Related Api
-    app.post("/events", verifyFBToken,verifyAdmin, async (req, res) => {
+    app.post("/events", verifyFBToken, verifyAdmin, async (req, res) => {
       const tipsData = req.body;
       const result = await upcomingEventCollection.insertOne(tipsData);
       //  console.log(req.headers);
